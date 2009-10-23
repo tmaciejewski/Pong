@@ -6,13 +6,15 @@
 #include <cmath>
 #include <ctime>
 #include <unistd.h>
+#include <vector>
 
 #define PI 3.141592
 
 enum GameStates {STATE_GAME, STATE_AFTER};
 
-GLfloat screenWidth = 640.0, screenHeight = 480.0;
+GLsizei screenWidth = 800, screenHeight = 600;
 GameStates gameState = STATE_GAME;
+std::vector<bool> keyPressed(SDLK_LAST, false);
 
 class Object
 {
@@ -64,7 +66,7 @@ class Player : public Object
         {
             x = _x;
             reset();
-            boost = 3.0;
+            boost = 1.2;
             y = 0.0;
             w = 20;
             h = 100;
@@ -77,7 +79,7 @@ class Player : public Object
 
         void update()
         {
-            GLfloat ds = 0.0, decel = 0.1;
+            GLfloat ds = 0.0, decel = 1.0;
 
             if (speed < decel && speed > -decel)
                 ds = -speed;
@@ -151,7 +153,7 @@ class Ball : public Object
                 ++returns;
                 if (returns % 2 == 0)
                 {
-                    speed *= 1.1;
+                    speed *= 1.2;
                 }
             }
             else
@@ -180,14 +182,9 @@ class Ball : public Object
 
 } ball;
 
-void update()
+void initGL()
 {
-    if (gameState == STATE_GAME)
-    {
-        p1.update();
-        p2.update();
-        ball.update();
-    }
+    glClearColor(0.0, 0.0, 0.0, 0.0);
 }
 
 void display()
@@ -221,25 +218,24 @@ void reshape(int w, int h)
     glLoadIdentity();
 }
 
-void keyboard(unsigned char key, int x, int y)
+void keyboard()
 {
-    switch (key) {
-    case 27:
+    if(keyPressed[SDLK_ESCAPE])
         exit(0);
-        break;
-    case 'a':
+
+    if (keyPressed['a'])
         p1.up();
-        break;
-    case 'z':
+
+    if (keyPressed['z'])
         p1.down();
-        break;
-    case 'm':
+
+    if (keyPressed['m'])
         p2.down();
-        break;
-    case 'k':
+
+    if (keyPressed['k'])
         p2.up();
-        break;
-    case 'r':
+
+    if (keyPressed['r'])
         if (gameState == STATE_AFTER)
         {
             ball.reset();
@@ -247,14 +243,38 @@ void keyboard(unsigned char key, int x, int y)
             p2.reset();
             gameState = STATE_GAME;
         }
+}
+
+void update()
+{
+    keyboard();
+    if (gameState == STATE_GAME)
+    {
+        p1.update();
+        p2.update();
+        ball.update();
     }
+}
+
+SDL_Surface * setVideoMode()
+{
+    SDL_Surface *surface;
+    int flags = SDL_OPENGL | SDL_RESIZABLE;
+    if ((surface = SDL_SetVideoMode(screenWidth, screenHeight, 0, flags)) == NULL)
+    {
+        std::cerr << "Unable to create OpenGL screen: " << SDL_GetError() << '\n';
+        SDL_Quit();
+        exit(-1);
+    }
+
+    return surface;
 }
 
 
 int main(int argc,char *argv[])
 {
-    int done;
-    SDL_Surface *surface;
+    SDL_Surface *surface = NULL;
+    SDL_Event event;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -262,47 +282,43 @@ int main(int argc,char *argv[])
         return -1;
     }
 
-    if ((surface = SDL_SetVideoMode(screenWidth, screenHeight, 0, SDL_OPENGL | SDL_RESIZABLE)) == NULL)
-    {
-        std::cerr << "Unable to create OpenGL screen: " << SDL_GetError() << '\n';
-        SDL_Quit();
-        return -1;
-    }
+    surface = setVideoMode();
 
     SDL_WM_SetCaption("Pong", NULL);
 
+    initGL();
     reshape(screenWidth, screenHeight);
-    done = 0;
-    while (!done)
+
+    while (!keyPressed[SDLK_ESCAPE] && event.type != SDL_QUIT)
     {
         update();
         display();
         SDL_GL_SwapBuffers();
 
-        SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            if (event.type == SDL_QUIT)
+            if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
             {
-                done = 1;
-            }
-
-            if (event.type == SDL_KEYDOWN ) {
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                {
-                    done = 1;
-                }
+                keyPressed[event.key.keysym.sym] = static_cast<bool>(event.key.state);
             }
 
             if (event.type == SDL_VIDEORESIZE)
             {
-                SDL_ResizeSurface(surface, event.resize.w, event.resize.h);
-                reshape(event.resize.w, event.resize.h);
+                screenWidth = event.resize.w;
+                screenHeight = event.resize.h;
+
+                if (surface)
+                    SDL_FreeSurface(surface);
+
+                surface = setVideoMode();
             }
         }
 
         usleep(10000);
     }
+
     SDL_Quit();
-    return 1;
+
+    return 0;
 }
+
