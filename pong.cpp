@@ -1,4 +1,6 @@
-#include <GL/glut.h>
+#include <GL/glu.h>
+#include <GL/gl.h>
+#include <SDL/SDL.h>
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
@@ -44,16 +46,8 @@ class Object
 
         virtual bool isCollision(float x1, float y1, float x2, float y2)
         {
-            GLfloat nearest_x = (fabs(x - x1) < fabs(x + w - x1) ? x : x + w);
-
-            if (x < x1 && x + w > x1 && y < y1 && y + h > y1)
-                return false;
-
-            if (x < x2 && x + w > x2 && y < y2 && y + h > y2)
-                return true;
-
             if (y2 > y && y2 < y+h)
-                if ((nearest_x - x1)*(nearest_x - x2) < 0)
+                if ((x - x1)*(x - x2) < 0)
                     return true;
 
             return false;
@@ -71,9 +65,9 @@ class Player : public Object
             x = _x;
             reset();
             boost = 3.0;
+            y = 0.0;
             w = 20;
             h = 100;
-            y = screenHeight / 2 - h / 2;
         }
 
         void reset()
@@ -153,7 +147,7 @@ class Ball : public Object
 
             if (p1.isCollision(x, y, x + dx, y + dy) || p2.isCollision(x, y, x + dx, y + dy))
             {
-                angle = -angle + rand() / float(RAND_MAX) * PI/8 - PI/16;
+                angle = -angle;
                 ++returns;
                 if (returns % 2 == 0)
                 {
@@ -184,32 +178,16 @@ class Ball : public Object
             }
         }
 
-        void display()
-        {
-            setColor();
-            glPushMatrix();
-            glTranslatef(x, y, 0.0);
-            glutSolidSphere(5, 10, 10);
-            glPopMatrix();
-        }
-
 } ball;
 
 void update()
 {
     if (gameState == STATE_GAME)
     {
+        p1.update();
+        p2.update();
         ball.update();
     }
-    p1.update();
-    p2.update();
-}
-
-void idle()
-{
-    update();
-    glutPostRedisplay();
-    usleep(10000);
 }
 
 void display()
@@ -227,7 +205,6 @@ void display()
     glEnd();
 
     ball.display();
-    glutSwapBuffers();
 }
 
 void reshape(int w, int h)
@@ -239,7 +216,7 @@ void reshape(int w, int h)
     glViewport(0, 0, (GLsizei) w, (GLsizei) h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0.0, (GLdouble) w, 0.0, (GLdouble) h, -10, 10);
+    gluOrtho2D(0.0, (GLdouble) w, 0.0, (GLdouble) h);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
@@ -252,19 +229,15 @@ void keyboard(unsigned char key, int x, int y)
         break;
     case 'a':
         p1.up();
-        glutPostRedisplay();
         break;
     case 'z':
         p1.down();
-        glutPostRedisplay();
         break;
     case 'm':
         p2.down();
-        glutPostRedisplay();
         break;
     case 'k':
         p2.up();
-        glutPostRedisplay();
         break;
     case 'r':
         if (gameState == STATE_AFTER)
@@ -280,14 +253,56 @@ void keyboard(unsigned char key, int x, int y)
 
 int main(int argc,char *argv[])
 {
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(screenWidth, screenHeight);
-    glutCreateWindow("Pong");
-    glutDisplayFunc(display);
-    glutReshapeFunc(reshape);
-    glutKeyboardFunc(keyboard);
-    glutIdleFunc(idle);
-    glutMainLoop();
-    return 0;
+    int done;
+    SDL_Surface *surface;
+
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+        std::cerr << "Unable to initialize SDL: " << SDL_GetError() << '\n';
+        return -1;
+    }
+
+    if ((surface = SDL_SetVideoMode(screenWidth, screenHeight, 0, SDL_OPENGL | SDL_RESIZABLE)) == NULL)
+    {
+        std::cerr << "Unable to create OpenGL screen: " << SDL_GetError() << '\n';
+        SDL_Quit();
+        return -1;
+    }
+
+    SDL_WM_SetCaption("Pong", NULL);
+
+    reshape(screenWidth, screenHeight);
+    done = 0;
+    while (!done)
+    {
+        update();
+        display();
+        SDL_GL_SwapBuffers();
+
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_QUIT)
+            {
+                done = 1;
+            }
+
+            if (event.type == SDL_KEYDOWN ) {
+                if (event.key.keysym.sym == SDLK_ESCAPE)
+                {
+                    done = 1;
+                }
+            }
+
+            if (event.type == SDL_VIDEORESIZE)
+            {
+                SDL_ResizeSurface(surface, event.resize.w, event.resize.h);
+                reshape(event.resize.w, event.resize.h);
+            }
+        }
+
+        usleep(10000);
+    }
+    SDL_Quit();
+    return 1;
 }
