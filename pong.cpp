@@ -149,12 +149,11 @@ class Ball : public Object
 
             if (p1.isCollision(x, y, x + dx, y + dy) || p2.isCollision(x, y, x + dx, y + dy))
             {
-                angle = -angle;
+                float f = 1 + ((rand() % 11) - 5.0) / 20.0;
+                angle = -angle*f;
+                std::cout << f << '\n';
                 ++returns;
-                if (returns % 2 == 0)
-                {
-                    speed *= 1.2;
-                }
+                speed *= 1.1;
             }
             else
             {
@@ -250,10 +249,11 @@ void update()
     keyboard();
     if (gameState == STATE_GAME)
     {
-        p1.update();
-        p2.update();
         ball.update();
     }
+
+    p1.update();
+    p2.update();
 }
 
 SDL_Surface * setVideoMode()
