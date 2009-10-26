@@ -151,7 +151,6 @@ class Ball : public Object
             {
                 float f = 1 + ((rand() % 11) - 5.0) / 20.0;
                 angle = -angle*f;
-                std::cout << f << '\n';
                 ++returns;
                 speed *= 1.1;
             }
