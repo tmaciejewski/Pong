@@ -204,8 +204,6 @@ void display()
 
 void reshape(int w, int h)
 {
-    screenHeight = h;
-    screenWidth = w;
     p2.x = w - p2.w;
 
     glViewport(0, 0, (GLsizei) w, (GLsizei) h);
@@ -310,6 +308,7 @@ int main(int argc,char *argv[])
                     SDL_FreeSurface(surface);
 
                 surface = setVideoMode();
+                reshape(screenWidth, screenHeight);
             }
         }
 
