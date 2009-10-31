@@ -48,8 +48,8 @@ class Object
 
         virtual bool isCollision(float x1, float y1, float x2, float y2)
         {
-            if (y2 > y && y2 < y+h)
-                if ((x - x1)*(x - x2) < 0)
+            if ((y2 > y && y2 < y + h) || (y1 > y && y1 < y + h))
+                if ((x - x1)*(x - x2) < 0 || (x + w - x1)*(x + w - x2) < 0)
                     return true;
 
             return false;
@@ -319,4 +319,3 @@ int main(int argc,char *argv[])
 
     return 0;
 }
-
